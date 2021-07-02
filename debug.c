@@ -23,6 +23,16 @@ static int simpleInstruction(const char* name, int offset) {
 }
 
 int disassembleInstruction(Chunk* chunk, int offset) {
+	int lineNumber = decodeLine(&chunk->lines, offset);
+	int lastLineNumber = decodeLine(&chunk->lines, offset - 1);
+
+	if (lineNumber == lastLineNumber) {
+		printf("   | ");
+	}
+	else {
+	printf("%4d ", lineNumber);
+	}
+
 	printf("%04d ", offset);
 
 	uint8_t instruction = chunk->data[offset];

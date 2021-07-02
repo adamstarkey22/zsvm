@@ -10,9 +10,21 @@ typedef enum {
 } OpCode;
 
 typedef struct {
+	int number;
+	int offset;
+} Line;
+
+typedef struct {
+	int count;
+	int capacity;
+	Line* data;
+} LineArray;
+
+typedef struct {
 	int count;
 	int capacity;
 	uint8_t* data;
+	LineArray lines;
 	ValueArray constants;
 } Chunk;
 
@@ -20,5 +32,10 @@ void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
 void writeChunk(Chunk* chunk, uint8_t byte);
 int addConstant(Chunk* chunk, Value value);
+
+void initLineArray(LineArray* array);
+void freeLineArray(LineArray* array);
+void writeLine(Chunk* chunk, int line);
+int decodeLine(LineArray* lines, int offset);
 
 #endif

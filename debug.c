@@ -17,7 +17,7 @@ static int simpleInstruction(const char* name, int offset) {
 int disassembleInstruction(Chunk* chunk, int offset) {
 	printf("%04d ", offset);
 
-	uint8_t instruction = chunk->code[offset];
+	uint8_t instruction = chunk->data[offset];
 	switch (instruction) {
 		case OP_RETURN:
 			return simpleInstruction("OP_RETURN", offset);

@@ -10,12 +10,11 @@ typedef enum {
 typedef struct {
 	int count;
 	int capacity;
-	uint8_t* code;
+	uint8_t* data;
 } Chunk;
 
 void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
-
-void writeByte(Chunk* chunk, uint8_t byte);
+void writeChunk(Chunk* chunk, uint8_t byte);
 
 #endif

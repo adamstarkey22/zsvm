@@ -50,7 +50,8 @@ static Token makeToken(Scanner* scanner, TokenType type) {
 	token.type = type;
 	token.start = scanner->start;
 	token.length = (int)(scanner->current - scanner->start);
-	token.line = scanner->line;
+	if (type == TOKEN_LINE_END) token.line = scanner->line - 1;
+	else token.line = scanner->line;
 	return token;
 }
 
@@ -79,6 +80,7 @@ static void skipWhitespace(Scanner* scanner) {
 				if (peekNext(scanner) == '#') {
 					while (true) {
 						if (isAtEnd(scanner)) return;
+						if (peek(scanner) == '\n') ++scanner->line;
 						if (peek(scanner) == '#' && peekNext(scanner) == '>') {
 							advance(scanner); // '#'
 							advance(scanner); // '>'

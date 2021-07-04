@@ -9,8 +9,6 @@
 #include "debug.h"
 #include "vm.h"
 
-VM vm;
-
 static void repl() {
 	char line[1024];
 	for (;;) {
@@ -21,7 +19,7 @@ static void repl() {
 			break;
 		}
 
-		interpret(&vm, line);
+		interpret(line);
 	}
 }
 
@@ -55,7 +53,7 @@ static char* readFile(const char* path) {
 
 static void runFile(const char* path) {
 	char* source = readFile(path);
-	InterpretResult result = interpret(&vm, source);
+	InterpretResult result = interpret(source);
 	free(source);
 
 	if (result == INTERPRET_COMPILE_ERROR) exit(65);
@@ -63,7 +61,7 @@ static void runFile(const char* path) {
 }
 
 int main(int argc, const char* argv[]) {
-	initVM(&vm);
+	initVM();
 
 	if (argc == 1) {
 		repl();
@@ -76,6 +74,6 @@ int main(int argc, const char* argv[]) {
 		exit(64);
 	}
 
-	freeVM(&vm);
+	freeVM();
 	return 0;
 }

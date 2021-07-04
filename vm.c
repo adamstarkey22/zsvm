@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "compiler.h"
 #include "debug.h"
 #include "vm.h"
 
@@ -30,14 +31,14 @@ static InterpretResult run() {
 
 	for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
-		printf("          ");
+		disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->data));
+		printf("   | ");
 		for (Value* slot = vm.stack; slot < vm.sp; ++slot) {
 			printf("[ ");
 			printValue(*slot);
 			printf(" ]");
 		}
 		printf("\n");
-		disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->data));
 #endif
 
 		uint8_t instruction;
@@ -65,13 +66,26 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char* source) {
-	compile(source);
-	return INTERPRET_OK;
+	Chunk chunk;
+	initChunk(&chunk);
+	writeLine(&chunk, 1);
+
+	if (!compile(source, &chunk)) {
+		freeChunk(&chunk);
+		return INTERPRET_COMPILE_ERROR;
+	}
+	vm.chunk = &chunk;
+	vm.ip = vm.chunk->data;
+
+	InterpretResult result = run();
+
+	freeChunk(&chunk);
+	return result;
 }
 
 void push(Value value) {
 	*vm.sp = value;
-	--vm.sp;
+	++vm.sp;
 }
 
 Value pop() {

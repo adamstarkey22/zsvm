@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +24,7 @@ static void repl() {
 		interpret(&vm, line);
 	}
 }
-/*
+
 static char* readFile(const char* path) {
 	FILE* file = fopen(path, "rb");
 	if (file == NULL) {
@@ -50,16 +52,14 @@ static char* readFile(const char* path) {
 	fclose(file);
 	return buffer;
 }
-*/
+
 static void runFile(const char* path) {
-	/*
 	char* source = readFile(path);
 	InterpretResult result = interpret(&vm, source);
 	free(source);
 
 	if (result == INTERPRET_COMPILE_ERROR) exit(65);
 	if (result == INTERPRET_RUNTIME_ERROR) exit(70);
-	*/
 }
 
 int main(int argc, const char* argv[]) {

@@ -6,11 +6,10 @@
 #include "scanner.h"
 
 void compile(const char* source) {
-	Scanner scanner;
-	initScanner(&scanner, source);
+	initScanner(source);
 	int line = -1;
 	for (;;) {
-		Token token = scanToken(&scanner);
+		Token token = scanToken();
 		if (token.line != line) {
 			line = token.line;
 			printf("%4d ", token.line);

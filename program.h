@@ -7,13 +7,13 @@
 #include "zsvm.h"
 
 typedef enum {
-	_ZSVM_OP_RETURN,
-	_ZSVM_OP_ADD,
-	_ZSVM_OP_SUBTRACT,
-	_ZSVM_OP_MULTIPLY,
-	_ZSVM_OP_DIVIDE,
-	_ZSVM_OP_NEGATE,
-	_ZSVM_OP_CONSTANT,
+	_OP_RETURN,
+	_OP_ADD,
+	_OP_SUBTRACT,
+	_OP_MULTIPLY,
+	_OP_DIVIDE,
+	_OP_NEGATE,
+	_OP_CONSTANT,
 } _ZSVMopcode;
 
 void _zsvmWriteProgramByte(ZSVMprogram* program, uint8_t byte);

@@ -1,16 +1,12 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 
-#include "common.h"
 #include "compiler.h"
 #include "debug.h"
 #include "scanner.h"
 
-#ifdef DEBUG_PRINT_CODE
-#include "debug.h"
-#endif
-
-typedef struct {
+/*typedef struct {
 	Token current;
 	Token previous;
 	bool hadError;
@@ -230,9 +226,30 @@ static ParseRule* getRule(TokenType type) {
 
 static void expression() {
 	parsePrecedence(PREC_ASSIGNMENT);
+}*/
+
+ZSVMresult _zsvmCompileProgram(ZSVMprogram* program, const char* source) {
+	_ZSVMscanner scanner;
+	_zsvmInitScanner(&scanner, source);
+
+	for (;;) {
+		_ZSVMtoken token = _zsvmScanToken(&scanner);
+
+		printf("%4d %-16s %.*s\n", token.line, _ZSVMtokenstrings[token.type], token.length, token.start);
+
+		if (token.type == _TOKEN_EOF) break;
+	}
+	printf("\n");
+	return ZSVM_OK;
+	/*Parser parser;
+	parser.hadError = false;
+	parser.panicMode = false;
+
+	if (parser.hadError) return ZSVM_COMPILE_ERROR;
+	else return ZSVM_OK;*/
 }
 
-bool compile(const char* source, Chunk* chunk) {
+/*bool compile(const char* source, Chunk* chunk) {
 	initScanner(source);
 	compilingChunk = chunk;
 
@@ -244,4 +261,4 @@ bool compile(const char* source, Chunk* chunk) {
 	consume(TOKEN_EOF, "Expect end of expression.");
 	endCompiler();
 	return !parser.hadError;
-}
+}*/

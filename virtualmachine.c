@@ -35,18 +35,18 @@ static ZSVMresult run(ZSVMvirtualmachine* vm) {
 	for (;;) {
 		uint8_t instruction = READ_BYTE();
 		switch (instruction) {
-			case _ZSVM_OP_RETURN:
+			case _OP_RETURN:
 				_zsvmPrintValue(pop(vm));
 				printf("\n");
 				return ZSVM_OK;
 
-			case _ZSVM_OP_ADD:      BINARY_OP(+); break;
-			case _ZSVM_OP_SUBTRACT: BINARY_OP(-); break; 
-			case _ZSVM_OP_MULTIPLY: BINARY_OP(*); break; 
-			case _ZSVM_OP_DIVIDE:   BINARY_OP(/); break;
-			case _ZSVM_OP_NEGATE:   push(vm, -pop(vm));  break;
+			case _OP_ADD:      BINARY_OP(+); break;
+			case _OP_SUBTRACT: BINARY_OP(-); break; 
+			case _OP_MULTIPLY: BINARY_OP(*); break; 
+			case _OP_DIVIDE:   BINARY_OP(/); break;
+			case _OP_NEGATE:   push(vm, -pop(vm));  break;
 
-			case _ZSVM_OP_CONSTANT: {
+			case _OP_CONSTANT: {
 				_ZSVMvalue constant = READ_CONSTANT();
 				push(vm, constant);
 				break;

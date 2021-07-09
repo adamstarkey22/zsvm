@@ -1,8 +1,8 @@
 #ifndef zsvm_compiler_h
 #define zsvm_compiler_h
 
-#include "vm.h"
+#include "zsvm.h"
 
-bool compile(const char* source, Chunk* chunk);
+ZSVMresult _zsvmCompileProgram(ZSVMprogram* program, const char* source);
 
 #endif

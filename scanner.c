@@ -1,16 +1,7 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "common.h"
 #include "scanner.h"
-
-Scanner scanner;
-
-void initScanner(const char* source) {
-	scanner.start = source;
-	scanner.current = source;
-	scanner.line = 1;
-}
 
 static bool isAlpha(char c) {
 	return (c >= 'a' && c <= 'z') ||
@@ -22,73 +13,74 @@ static bool isDigit(char c) {
 	return c >= '0' && c <= '9' && c != '8';
 }
 
-static bool isAtEnd() {
-	return *scanner.current == '\0';
+static bool isAtEnd(_ZSVMscanner* scanner) {
+	return *scanner->current == '\0';
 }
 
-static char advance() {
-	++scanner.current;
-	return scanner.current[-1];
+static char advance(_ZSVMscanner* scanner) {
+	scanner->current++;
+	return scanner->current[-1];
 }
 
-static char peek() {
-	return *scanner.current;
+static char peek(_ZSVMscanner* scanner) {
+	return *scanner->current;
 }
 
-static char peekNext() {
-	if (isAtEnd()) return '\0';
-	return scanner.current[1];
+static char peekNext(_ZSVMscanner* scanner) {
+	if (isAtEnd(scanner)) return '\0';
+	return scanner->current[1];
 }
 
-static bool match(char expected) {
-	if (isAtEnd()) return false;
-	if (*scanner.current != expected) return false;
-	++scanner.current;
+static bool match(_ZSVMscanner* scanner, char expected) {
+	if (isAtEnd(scanner)) return false;
+	if (*scanner->current != expected) return false;
+	scanner->current++;
 	return true;
 }
 
-static Token makeToken(TokenType type) {
-	Token token;
+static _ZSVMtoken makeToken(_ZSVMscanner* scanner, _ZSVMtokentype type) {
+	_ZSVMtoken token;
 	token.type = type;
-	token.start = scanner.start;
-	token.length = (int)(scanner.current - scanner.start);
-	if (type == TOKEN_LINE_END) token.line = scanner.line - 1;
-	else token.line = scanner.line;
+	token.start = scanner->start;
+	token.length = (int)(scanner->current - scanner->start);
+	token.line = scanner->line;
+
+	if (type == _TOKEN_LINE_END) scanner->line++;
 	return token;
 }
 
-static Token errorToken(const char* message) {
-	Token token;
-	token.type = TOKEN_ERROR;
+static _ZSVMtoken errorToken(const char* message, int line) {
+	_ZSVMtoken token;
+	token.type = _TOKEN_ERROR;
 	token.start = message;
 	token.length = (int)strlen(message);
-	token.line = scanner.line;
+	token.line = line;
 	return token;
 }
 
-static void skipWhitespace() {
+static void skipWhitespace(_ZSVMscanner* scanner) {
 	for (;;) {
-		char c = peek();
+		char c = peek(scanner);
 		switch (c) {
 			case ' ':
 			case '\r':
 			case '\t':
-				advance();
+				advance(scanner);
 				break;
 			case '#':
-				while (peek() != '\n' && !isAtEnd()) advance();
+				while (peek(scanner) != '\n' && !isAtEnd(scanner)) advance(scanner);
 				break;
 			case '<':
-				if (peekNext() == '#') {
+				if (peekNext(scanner) == '#') {
 					while (true) {
-						if (isAtEnd()) return;
-						if (peek() == '\n') ++scanner.line;
-						if (peek() == '#' && peekNext() == '>') {
-							advance(); // '#'
-							advance(); // '>'
+						if (isAtEnd(scanner)) return;
+						if (peek(scanner) == '\n') scanner->line++;
+						if (peek(scanner) == '#' && peekNext(scanner) == '>') {
+							advance(scanner); // '#'
+							advance(scanner); // '>'
 							break;
 						}
-						advance();
+						advance(scanner);
 					}
 				} else {
 						return;
@@ -100,92 +92,96 @@ static void skipWhitespace() {
 	}
 }
 
-static bool matchString(const char* string) {
-	if (scanner.current - scanner.start == strlen(string) && memcmp(scanner.start, string, strlen(string)) == 0) {
+static bool matchString(_ZSVMscanner* scanner, const char* string) {
+	if (scanner->current - scanner->start == strlen(string) && memcmp(scanner->start, string, strlen(string)) == 0) {
 		return true;
 	} // strings are the same length and are equal
 	return false;
 }
 
-static TokenType identifierType() {
-	if (matchString("add")) return TOKEN_ADD;
-	if (matchString("and")) return TOKEN_AND;
-	if (matchString("break")) return TOKEN_BREAK;
-	if (matchString("def")) return TOKEN_DEF;
-	if (matchString("div")) return TOKEN_DIV;
-	if (matchString("else")) return TOKEN_ELSE;
-	if (matchString("false")) return TOKEN_FALSE;
-	if (matchString("fun")) return TOKEN_FUN;
-	if (matchString("if")) return TOKEN_IF;
-	if (matchString("mul")) return TOKEN_MUL;
-	if (matchString("or")) return TOKEN_OR;
-	if (matchString("return")) return TOKEN_RETURN;
-	if (matchString("set")) return TOKEN_SET;
-	if (matchString("sub")) return TOKEN_SUB;
-	if (matchString("true")) return TOKEN_TRUE;
-	if (matchString("while")) return TOKEN_WHILE;
+static _ZSVMtokentype identifierType(_ZSVMscanner* scanner) {
+	if (matchString(scanner, "add"))    return _TOKEN_ADD;
+	if (matchString(scanner, "and"))    return _TOKEN_AND;
+	if (matchString(scanner, "break"))  return _TOKEN_BREAK;
+	if (matchString(scanner, "def"))    return _TOKEN_DEF;
+	if (matchString(scanner, "div"))    return _TOKEN_DIV;
+	if (matchString(scanner, "else"))   return _TOKEN_ELSE;
+	if (matchString(scanner, "false"))  return _TOKEN_FALSE;
+	if (matchString(scanner, "fun"))    return _TOKEN_FUN;
+	if (matchString(scanner, "if"))     return _TOKEN_IF;
+	if (matchString(scanner, "mul"))    return _TOKEN_MUL;
+	if (matchString(scanner, "or"))     return _TOKEN_OR;
+	if (matchString(scanner, "return")) return _TOKEN_RETURN;
+	if (matchString(scanner, "set"))    return _TOKEN_SET;
+	if (matchString(scanner, "sub"))    return _TOKEN_SUB;
+	if (matchString(scanner, "true"))   return _TOKEN_TRUE;
+	if (matchString(scanner, "while"))  return _TOKEN_WHILE;
 
-	return TOKEN_IDENTIFIER;
+	return _TOKEN_IDENTIFIER;
 }
 
-static Token identifier() {
-	while (isAlpha(peek()) || isDigit(peek())) advance();
-	return makeToken(identifierType());
+static _ZSVMtoken identifier(_ZSVMscanner* scanner) {
+	while (isAlpha(peek(scanner)) || isDigit(peek(scanner))) advance(scanner);
+	return makeToken(scanner, identifierType(scanner));
 }
 
-static Token number() {
-	while(isDigit(peek())) advance();
+static _ZSVMtoken number(_ZSVMscanner* scanner) {
+	while(isDigit(peek(scanner))) advance(scanner);
 
-	if (peek() == '.' && isDigit(peekNext())) {
-		advance(); // '.'
-		while (isDigit(peek())) advance();
+	if (peek(scanner) == '.' && isDigit(peekNext(scanner))) {
+		advance(scanner); // '.'
+		while (isDigit(peek(scanner))) advance(scanner);
 	}
-	return makeToken(TOKEN_NUMBER);
+	return makeToken(scanner, _TOKEN_NUMBER);
 }
 
-static Token string() {
-	while (peek() != '"') {
-		if (isAtEnd()) return errorToken("Unterminated string");
-		if (peek() == '\n') ++scanner.line;
-		advance();
+static _ZSVMtoken string(_ZSVMscanner* scanner) {
+	while (peek(scanner) != '"') {
+		if (isAtEnd(scanner)) return errorToken("Unterminated string", scanner->line);
+		if (peek(scanner) == '\n') scanner->line++;
+		advance(scanner);
 	}
-	advance(); // '"'
-	return makeToken(TOKEN_STRING);
+	advance(scanner); // '"'
+	return makeToken(scanner, _TOKEN_STRING);
 }
 
-Token scanToken() {
-	skipWhitespace();
-	scanner.start = scanner.current;
+void _zsvmInitScanner(_ZSVMscanner* scanner, const char* source) {
+	scanner->start = source;
+	scanner->current = source;
+	scanner->line = 1;
+}
 
-	if (isAtEnd()) return makeToken(TOKEN_EOF);
+_ZSVMtoken _zsvmScanToken(_ZSVMscanner* scanner) {
+	skipWhitespace(scanner);
+	scanner->start = scanner->current;
 
-	char c = advance();
-	if (isDigit(c)) return number();
-	if (isAlpha(c)) return identifier();
+	if (isAtEnd(scanner)) return makeToken(scanner, _TOKEN_EOF);
+
+	char c = advance(scanner);
+	if (isDigit(c)) return number(scanner);
+	if (isAlpha(c)) return identifier(scanner);
 
 	switch (c) {
-		case '\n': ++scanner.line; return makeToken(TOKEN_LINE_END);
-		case '(': return makeToken(TOKEN_LEFT_PAREN);
-		case ')': return makeToken(TOKEN_RIGHT_PAREN);
-		case '{': return makeToken(TOKEN_LEFT_BRACE);
-		case '}': return makeToken(TOKEN_RIGHT_BRACE);
-		case ':': return makeToken(TOKEN_COLON);
-		case '.': return makeToken(TOKEN_DOT);
-		case '+': return makeToken(TOKEN_PLUS);
-		case '-': return makeToken(TOKEN_MINUS);
-		case '*': return makeToken(TOKEN_STAR);
-		case '/': return makeToken(TOKEN_SLASH);
-		case '!':
-			return match('=') ? makeToken(TOKEN_BANG_EQUAL) : makeToken(TOKEN_BANG);
-		case '>':
-			return match('=') ? makeToken(TOKEN_GREATER_EQUAL) : makeToken(TOKEN_GREATER);
-		case '<':
-			return match('=') ? makeToken(TOKEN_LESS_EQUAL) : makeToken(TOKEN_LESS);
-		case '=':
-			return match('=') ? makeToken(TOKEN_EQUAL_EQUAL) : errorToken("Uncaught TheFuckIsThis exception");
-		case '"': return string();
+		case '\n': return makeToken(scanner, _TOKEN_LINE_END);
+		case '(':  return makeToken(scanner, _TOKEN_LEFT_PAREN);
+		case ')':  return makeToken(scanner, _TOKEN_RIGHT_PAREN);
+		case '{':  return makeToken(scanner, _TOKEN_LEFT_BRACE);
+		case '}':  return makeToken(scanner, _TOKEN_RIGHT_BRACE);
+		case ':':  return makeToken(scanner, _TOKEN_COLON);
+		case '.':  return makeToken(scanner, _TOKEN_DOT);
+		case '+':  return makeToken(scanner, _TOKEN_PLUS);
+		case '-':  return makeToken(scanner, _TOKEN_MINUS);
+		case '*':  return makeToken(scanner, _TOKEN_STAR);
+		case '/':  return makeToken(scanner, _TOKEN_SLASH);
+
+		case '!': return match(scanner, '=') ? makeToken(scanner, _TOKEN_BANG_EQUAL)    : makeToken(scanner, _TOKEN_BANG);
+		case '>': return match(scanner, '=') ? makeToken(scanner, _TOKEN_GREATER_EQUAL) : makeToken(scanner, _TOKEN_GREATER);
+		case '<': return match(scanner, '=') ? makeToken(scanner, _TOKEN_LESS_EQUAL)    : makeToken(scanner, _TOKEN_LESS);
+		case '=': return match(scanner, '=') ? makeToken(scanner, _TOKEN_EQUAL_EQUAL)   : errorToken("Uncaught TheFuckIsThis exception.", scanner->line);
+
+		case '"': return string(scanner);
 		default: break;
 	}
 
-	return errorToken("Unexpected character.");
+	return errorToken("Unexpected character.", scanner->line);
 }

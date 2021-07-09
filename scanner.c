@@ -179,7 +179,7 @@ _ZSVMtoken _zsvmScanToken(_ZSVMscanner* scanner) {
 		case '!': return match(scanner, '=') ? makeToken(scanner, _TOKEN_BANG_EQUAL)    : makeToken(scanner, _TOKEN_BANG);
 		case '>': return match(scanner, '=') ? makeToken(scanner, _TOKEN_GREATER_EQUAL) : makeToken(scanner, _TOKEN_GREATER);
 		case '<': return match(scanner, '=') ? makeToken(scanner, _TOKEN_LESS_EQUAL)    : makeToken(scanner, _TOKEN_LESS);
-		case '=': return match(scanner, '=') ? makeToken(scanner, _TOKEN_EQUAL_EQUAL)   : errorToken("Uncaught TheFuckIsThis exception.", scanner->line);
+		case '=': if (match(scanner, '=')) return makeToken(scanner, _TOKEN_EQUAL_EQUAL); break;
 
 		case '"': return string(scanner);
 		default: break;

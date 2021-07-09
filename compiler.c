@@ -1,14 +1,18 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "compiler.h"
 #include "debug.h"
+#include "program.h"
 #include "scanner.h"
 
-/*typedef struct {
-	Token current;
-	Token previous;
+typedef struct {
+	_ZSVMscanner scanner;
+	_ZSVMtoken current;
+	_ZSVMtoken previous;
+	ZSVMprogram* program;
 	bool hadError;
 	bool panicMode;
 } Parser;
@@ -35,22 +39,15 @@ typedef struct {
 	Precedence precedence;
 } ParseRule;
 
-Parser parser;
-Chunk* compilingChunk;
-
-static Chunk* currentChunk() {
-	return compilingChunk;
-}
-
-static void errorAt(Token* token, const char* message) {
-	if (parser.panicMode) return;
-	parser.panicMode = true;
+static void errorAt(Parser* parser, _ZSVMtoken* token, const char* message) {
+	if (parser->panicMode) return;
+	parser->panicMode = true;
 	fprintf(stderr, "[line %d] Error", token->line);
 
-	if (token->type == TOKEN_EOF) {
+	if (token->type == _TOKEN_EOF) {
 		fprintf(stderr, " at end");
 	}
-	else if (token->type == TOKEN_ERROR) {
+	else if (token->type == _TOKEN_ERROR) {
 		// Nothing
 	}
 	else {
@@ -58,207 +55,191 @@ static void errorAt(Token* token, const char* message) {
 	}
 
 	fprintf(stderr, ": %s\n", message);
-	parser.hadError = true;
+	parser->hadError = true;
 }
 
-static void error(const char* message) {
-	errorAt(&parser.previous, message);
+static void error(Parser* parser, const char* message) {
+	errorAt(parser, &parser->previous, message);
 }
 
-static void errorAtCurrent(const char* message) {
-	errorAt(&parser.current, message);
+static void errorAtCurrent(Parser* parser, const char* message) {
+	errorAt(parser, &parser->current, message);
 }
 
-static void advance() {
-	parser.previous = parser.current;
+static void advance(Parser* parser) {
+	parser->previous = parser->current;
 
-	while (true) {
-		parser.current = scanToken();
-		if (parser.current.type != TOKEN_ERROR) break;
+	for (;;) {
+		parser->current = _zsvmScanToken(&parser->scanner);
+		if (parser->current.type != _TOKEN_ERROR) break;
 
-		errorAtCurrent(parser.current.start);
+		errorAtCurrent(parser, parser->current.start);
 	}
 }
 
-static void consume(TokenType type, const char* message) {
-	if (parser.current.type == type) {
-		advance();
+static void consume(Parser* parser, _ZSVMtokentype type, const char* message) {
+	if (parser->current.type == type) {
+		advance(parser);
 		return;
 	}
-	errorAtCurrent(message);
+	errorAtCurrent(parser, message);
 }
 
-static void emitByte(uint8_t byte) {
-	writeChunk(currentChunk(), byte);
+static void emitByte(Parser* parser, uint8_t byte) {
+	_zsvmWriteProgramByte(parser->program, byte);
 }
 
-static void emitBytes(uint8_t byte1, uint8_t byte2) {
-	emitByte(byte1);
-	emitByte(byte2);
+static void emitBytes(Parser* parser, uint8_t byte1, uint8_t byte2) {
+	emitByte(parser, byte1);
+	emitByte(parser, byte2);
 }
 
-static void emitReturn() {
-	emitByte(OP_RETURN);
-}
+static uint8_t makeConstant(Parser* parser, double value) {
+	int location = (int)_zsvmWriteProgramConstant(parser->program, value);
 
-static uint8_t makeConstant(Value value) {
-	int constant = addConstant(currentChunk(), value);
-	if (constant > UINT8_MAX) {
-		error("Maximum constant pool size exceeded.");
+	if (location > UINT8_MAX) {
+		error(parser, "Maximum constant pool size exceeded.");
 		return 0;
 	}
-	return constant;
+	return location;
 }
 
-static void emitConstant(Value value) {
-	emitBytes(OP_CONSTANT, makeConstant(value));
+static void emitConstant(Parser* parser, double value) {
+	emitBytes(parser, _OP_CONSTANT, makeConstant(parser, value));
 }
 
-static void endCompiler() {
-	emitReturn();
-#ifdef DEBUG_PRINT_CODE
-	if (!parser.hadError) {
-		disassembleChunk(currentChunk(), "code");
-	}
-#endif
+static void endCompiler(Parser* parser) {
+	emitByte(parser, _OP_RETURN);
 }
 
-static void expression();
-static ParseRule* getRule(TokenType type);
-static void parsePrecedence(Precedence precedence);
+static void expression(Parser* parser);
+static ParseRule* getRule(_ZSVMtokentype type);
+static void parsePrecedence(Parser* parser, Precedence precedence);
 
-static void binary() {
-	TokenType operatorType = parser.previous.type;
+static void binary(Parser* parser) {
+	_ZSVMtokentype operatorType = parser->previous.type;
 	ParseRule* rule = getRule(operatorType);
-	parsePrecedence((Precedence)(rule->precedence + 1));
+	parsePrecedence(parser, (Precedence)(rule->precedence + 1));
 
 	switch (operatorType) {
-		case TOKEN_PLUS: emitByte(OP_ADD); break;
-		case TOKEN_MINUS: emitByte(OP_SUBTRACT); break;
-		case TOKEN_STAR: emitByte(OP_MULTIPLY); break;
-		case TOKEN_SLASH: emitByte(OP_DIVIDE); break;
+		case _TOKEN_PLUS:  emitByte(parser, _OP_ADD); break;
+		case _TOKEN_MINUS: emitByte(parser, _OP_SUBTRACT); break;
+		case _TOKEN_STAR:  emitByte(parser, _OP_MULTIPLY); break;
+		case _TOKEN_SLASH: emitByte(parser, _OP_DIVIDE); break;
 		default: return; // Unreachable
 	}
 }
 
-static void grouping() {
-	expression();
-	consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+static void grouping(Parser* parser) {
+	expression(parser);
+	consume(parser, _TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void number() {
-	double value = strtod(parser.previous.start, NULL);
-	emitConstant(value);
+static void number(Parser* parser) {
+	double value = strtod(parser->previous.start, NULL);
+	emitConstant(parser, value);
 }
 
-static void unary() {
-	TokenType operatorType = parser.previous.type;
+static void unary(Parser* parser) {
+	_ZSVMtokentype operatorType = parser->previous.type;
 
-	parsePrecedence(PREC_UNARY);
+	parsePrecedence(parser, PREC_UNARY);
 
 	switch (operatorType) {
-		case TOKEN_MINUS: emitByte(OP_NEGATE); break;
+		case _TOKEN_MINUS: emitByte(parser, _OP_NEGATE); break;
 		default: return; // Unreachable
 	}
 }
 
 ParseRule rules[] = {
-	[TOKEN_LEFT_PAREN]	  = {grouping,	NULL,		PREC_NONE},
-	[TOKEN_RIGHT_PAREN]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_LEFT_BRACE]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_RIGHT_BRACE]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_COLON]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_DOT]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_PLUS]		  = {NULL,		binary,		PREC_TERM},
-	[TOKEN_MINUS]		  = {unary,		binary,		PREC_TERM},
-	[TOKEN_STAR]		  = {NULL,		binary,		PREC_FACTOR},
-	[TOKEN_SLASH]		  = {NULL,		binary,		PREC_FACTOR},
-	[TOKEN_LINE_END]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_EQUAL_EQUAL]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_BANG]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_BANG_EQUAL]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_GREATER]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_GREATER_EQUAL] = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_LESS]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_LESS_EQUAL]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_STRING]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_NUMBER]		  = {number,	NULL,		PREC_NONE},
-	[TOKEN_IDENTIFIER]	  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_ADD]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_AND]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_BREAK]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_DEF]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_DIV]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_ELSE]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_FALSE]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_FUN]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_IF]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_MUL]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_OR]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_RETURN]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_SET]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_SUB]			  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_TRUE]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_WHILE]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_ERROR]		  = {NULL,		NULL,		PREC_NONE},
-	[TOKEN_EOF]			  = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_LEFT_PAREN]    = {grouping,	NULL,		PREC_NONE},
+	[_TOKEN_RIGHT_PAREN]   = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_LEFT_BRACE]    = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_RIGHT_BRACE]   = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_COLON]         = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_DOT]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_PLUS]          = {NULL,		binary,		PREC_TERM},
+	[_TOKEN_MINUS]         = {unary,	binary,		PREC_TERM},
+	[_TOKEN_STAR]          = {NULL,		binary,		PREC_FACTOR},
+	[_TOKEN_SLASH]         = {NULL,		binary,		PREC_FACTOR},
+	[_TOKEN_LINE_END]      = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_EQUAL_EQUAL]   = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_BANG]          = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_BANG_EQUAL]    = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_GREATER]       = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_GREATER_EQUAL] = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_LESS]          = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_LESS_EQUAL]    = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_STRING]        = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_NUMBER]        = {number,	NULL,		PREC_NONE},
+	[_TOKEN_IDENTIFIER]    = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_ADD]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_AND]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_BREAK]         = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_DEF]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_DIV]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_ELSE]          = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_FALSE]         = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_FUN]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_IF]            = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_MUL]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_OR]            = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_RETURN]        = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_SET]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_SUB]           = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_TRUE]          = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_WHILE]         = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_ERROR]         = {NULL,		NULL,		PREC_NONE},
+	[_TOKEN_EOF]           = {NULL,		NULL,		PREC_NONE},
 };
 
-static void parsePrecedence(Precedence precedence) {
-	advance();
-	ParseFn prefixRule = getRule(parser.previous.type)->prefix;
+static void parsePrecedence(Parser* parser, Precedence precedence) {
+	advance(parser);
+	ParseFn prefixRule = getRule(parser->previous.type)->prefix;
 	if (prefixRule == NULL) {
-		error("Expect expression.");
+		error(parser, "Expect expression.");
 		return;
 	}
-	prefixRule();
+	prefixRule(parser);
 
-	while (precedence <= getRule(parser.current.type)->precedence) {
-		advance();
-		ParseFn infixRule = getRule(parser.previous.type)->infix;
-		infixRule();
+	while (precedence <= getRule(parser->current.type)->precedence) {
+		advance(parser);
+		ParseFn infixRule = getRule(parser->previous.type)->infix;
+		infixRule(parser);
 	}
 }
 
-static ParseRule* getRule(TokenType type) {
+static ParseRule* getRule(_ZSVMtokentype type) {
 	return &rules[type];
 }
 
-static void expression() {
-	parsePrecedence(PREC_ASSIGNMENT);
-}*/
+static void expression(Parser* parser) {
+	parsePrecedence(parser, PREC_ASSIGNMENT);
+}
 
 ZSVMresult _zsvmCompileProgram(ZSVMprogram* program, const char* source) {
-	_ZSVMscanner scanner;
-	_zsvmInitScanner(&scanner, source);
-
+	_ZSVMscanner debugScanner;
+	_zsvmInitScanner(&debugScanner, source);
 	for (;;) {
-		_ZSVMtoken token = _zsvmScanToken(&scanner);
+		_ZSVMtoken token = _zsvmScanToken(&debugScanner);
 
 		printf("%4d %-16s %.*s\n", token.line, _ZSVMtokenstrings[token.type], token.length, token.start);
 
 		if (token.type == _TOKEN_EOF) break;
 	}
 	printf("\n");
-	return ZSVM_OK;
-	/*Parser parser;
+
+	Parser parser;
 	parser.hadError = false;
 	parser.panicMode = false;
+	parser.program = program;
+	_zsvmInitScanner(&parser.scanner, source);
+
+	advance(&parser);
+	expression(&parser);
+	consume(&parser, _TOKEN_EOF, "Expect end of expression.");
+	endCompiler(&parser);
 
 	if (parser.hadError) return ZSVM_COMPILE_ERROR;
-	else return ZSVM_OK;*/
+	else return ZSVM_OK;
 }
-
-/*bool compile(const char* source, Chunk* chunk) {
-	initScanner(source);
-	compilingChunk = chunk;
-
-	parser.hadError = false;
-	parser.panicMode = false;
-
-	advance();
-	expression();
-	consume(TOKEN_EOF, "Expect end of expression.");
-	endCompiler();
-	return !parser.hadError;
-}*/

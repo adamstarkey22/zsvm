@@ -33,6 +33,7 @@ static ZSVMresult run(ZSVMvirtualmachine* vm) {
 
 
 	for (;;) {
+		_zsvmDisassembleInstruction(vm->program, (int)(vm->IP - vm->program->data));
 		uint8_t instruction = READ_BYTE();
 		switch (instruction) {
 			case _OP_RETURN:
@@ -52,6 +53,7 @@ static ZSVMresult run(ZSVMvirtualmachine* vm) {
 				break;
 			}
 		}
+		_zsvmPrintStack(vm);
 	}
 
 #undef READ_BYTE

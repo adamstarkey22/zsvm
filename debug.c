@@ -2,6 +2,7 @@
 
 #include "debug.h"
 #include "program.h"
+#include "virtualmachine.h"
 
 static size_t simpleInstruction(const char* name, size_t offset) {
 	printf("%s\n", name);
@@ -14,6 +15,16 @@ static size_t constantInstruction(const char* name, ZSVMprogram* program, size_t
 	_zsvmPrintValue(program->constants.data[location]);
 	printf("\"\n");
 	return offset + 2;
+}
+
+void _zsvmPrintStack(ZSVMvirtualmachine* vm) {
+	printf("                              ");
+	for (_ZSVMvalue* slot = vm->stack; slot < vm->SP; slot++) {
+		printf("[ ");
+		_zsvmPrintValue(*slot);
+		printf(" ]");
+	}
+	printf("\n");
 }
 
 void _zsvmDisassembleProgram(ZSVMprogram* program, const char* label) {

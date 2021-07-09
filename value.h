@@ -1,19 +1,17 @@
 #ifndef zsvm_value_h
 #define zsvm_value_h
 
-#include "common.h"
-
-typedef double Value;
+typedef double _ZSVMvalue;
 
 typedef struct {
-	int count;
-	int capacity;
-	Value* data;
-} ValueArray;
+	size_t capacity;
+	size_t count;
+	_ZSVMvalue* data;
+} _ZSVMvaluearray;
 
-void initValueArray(ValueArray* array);
-void freeValueArray(ValueArray* array);
-void writeValueArray(ValueArray* array, Value value);
-void printValue(Value value);
+void _zsvmInitValueArray(_ZSVMvaluearray* array);
+void _zsvmFreeValueArray(_ZSVMvaluearray* array);
+void _zsvmWriteValueArray(_ZSVMvaluearray* array, _ZSVMvalue value);
+void _zsvmPrintValue(_ZSVMvalue value);
 
 #endif

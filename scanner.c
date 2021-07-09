@@ -72,6 +72,8 @@ static void skipWhitespace(_ZSVMscanner* scanner) {
 				break;
 			case '<':
 				if (peekNext(scanner) == '#') {
+					advance(scanner); // '<'
+					advance(scanner); // '#'
 					while (true) {
 						if (isAtEnd(scanner)) return;
 						if (peek(scanner) == '\n') scanner->line++;

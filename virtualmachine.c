@@ -11,7 +11,7 @@ static void reset(ZSVMvirtualmachine* vm) {
 	vm->SP = vm->stack;
 }
 
-static void push(ZSVMvirtualmachine* vm, double value) {
+static void push(ZSVMvirtualmachine* vm, _ZSVMvalue value) {
 	*vm->SP = value;
 	vm->SP++;
 }

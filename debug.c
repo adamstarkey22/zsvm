@@ -11,20 +11,21 @@ static size_t simpleInstruction(const char* name, size_t offset) {
 
 static size_t constantInstruction(const char* name, ZSVMprogram* program, size_t offset) {
 	uint8_t location = program->data[offset + 1];
-	printf("%s %3d -> \"", name, location);
+	printf("%s %3d \"", name, location);
 	_zsvmPrintValue(program->constants.data[location]);
 	printf("\"\n");
 	return offset + 2;
 }
 
 void _zsvmPrintStack(ZSVMvirtualmachine* vm) {
-	printf("                              ");
+	printf("     [");
 	for (_ZSVMvalue* slot = vm->stack; slot < vm->SP; slot++) {
-		printf("[ ");
+		printf("\"");
 		_zsvmPrintValue(*slot);
-		printf(" ]");
+		printf("\"");
+		if (slot != vm->SP - 1) printf(", ");
 	}
-	printf("\n");
+	printf("]\n\n");
 }
 
 void _zsvmDisassembleProgram(ZSVMprogram* program, const char* label) {
@@ -32,7 +33,6 @@ void _zsvmDisassembleProgram(ZSVMprogram* program, const char* label) {
 	for (size_t offset = 0; offset < program->count;) {
 		offset = _zsvmDisassembleInstruction(program, offset);
 	}
-	printf("\n");
 }
 
 size_t _zsvmDisassembleInstruction(ZSVMprogram* program, size_t offset) {

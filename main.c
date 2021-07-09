@@ -5,31 +5,35 @@
 #include "debug.h"
 #include "program.h"
 
-int main(int argc, const char* argv[]) {
-	ZSVMvirtualmachine* vm = zsvmCreateVirtualMachine();
+static void interpret(ZSVMvirtualmachine* vm, char* source) {
 	ZSVMprogram* program = zsvmCreateProgram();
 
-	ZSVMresult result;
-	
-	result = _zsvmCompileProgram(program, "(5+4)*3");
-	switch (result) {
-	case ZSVM_OK:            printf("Compiler returned ZSVM_OK\n"); break;
-	case ZSVM_COMPILE_ERROR: printf("Compiler returned ZSVM_COMPILE_ERROR\n"); break;
-	case ZSVM_RUNTIME_ERROR: printf("Compiler returned ZSVM_RUNTIME_ERROR\n"); break;
-	default: break;
+	if (zsvmCompileProgram(program, source) != ZSVM_OK) {
+		zsvmDeleteProgram(program);
+		return;
 	}
 
-	_zsvmDisassembleProgram(program, "TEST PROGRAM");
-
-	result = zsvmRunProgram(vm, program);
-	switch (result) {
-		case ZSVM_OK:            printf("VM returned ZSVM_OK\n"); break;
-		case ZSVM_COMPILE_ERROR: printf("VM returned ZSVM_COMPILE_ERROR\n"); break;
-		case ZSVM_RUNTIME_ERROR: printf("VM returned ZSVM_RUNTIME_ERROR\n"); break;
-		default: break;
-	}
-
-	zsvmDeleteVirtualMachine(vm);
+	zsvmRunProgram(vm, program);
 	zsvmDeleteProgram(program);
+}
+
+static void repl(ZSVMvirtualmachine* vm) {
+	char line[1024];
+	for (;;) {
+		printf("> ");
+
+		if (!fgets(line, sizeof(line), stdin)) {
+			printf("\n");
+			break;
+		}
+
+		interpret(vm, line);
+	}
+}
+
+int main(int argc, const char* argv[]) {
+	ZSVMvirtualmachine* vm = zsvmCreateVirtualMachine();
+	repl(vm);
+	zsvmDeleteVirtualMachine(vm);
 	return 0;
 }

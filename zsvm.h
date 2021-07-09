@@ -17,4 +17,6 @@ ZSVMresult zsvmRunProgram(ZSVMvirtualmachine* vm, ZSVMprogram* program);
 ZSVMprogram* zsvmCreateProgram();
 void zsvmDeleteProgram(ZSVMprogram* program);
 
+ZSVMresult zsvmCompileProgram(ZSVMprogram* program, const char* source);
+
 #endif

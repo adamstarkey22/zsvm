@@ -94,7 +94,7 @@ static void emitBytes(Parser* parser, uint8_t byte1, uint8_t byte2) {
 	emitByte(parser, byte2);
 }
 
-static uint8_t makeConstant(Parser* parser, double value) {
+static uint8_t makeConstant(Parser* parser, _ZSVMvalue value) {
 	int location = (int)_zsvmWriteProgramConstant(parser->program, value);
 
 	if (location > UINT8_MAX) {
@@ -104,7 +104,7 @@ static uint8_t makeConstant(Parser* parser, double value) {
 	return location;
 }
 
-static void emitConstant(Parser* parser, double value) {
+static void emitConstant(Parser* parser, _ZSVMvalue value) {
 	emitBytes(parser, _OP_CONSTANT, makeConstant(parser, value));
 }
 
@@ -217,8 +217,8 @@ static void expression(Parser* parser) {
 	parsePrecedence(parser, PREC_ASSIGNMENT);
 }
 
-ZSVMresult _zsvmCompileProgram(ZSVMprogram* program, const char* source) {
-	_ZSVMscanner debugScanner;
+ZSVMresult zsvmCompileProgram(ZSVMprogram* program, const char* source) {
+	/*_ZSVMscanner debugScanner;
 	_zsvmInitScanner(&debugScanner, source);
 	for (;;) {
 		_ZSVMtoken token = _zsvmScanToken(&debugScanner);
@@ -227,7 +227,7 @@ ZSVMresult _zsvmCompileProgram(ZSVMprogram* program, const char* source) {
 
 		if (token.type == _TOKEN_EOF) break;
 	}
-	printf("\n");
+	printf("\n");*/
 
 	Parser parser;
 	parser.hadError = false;

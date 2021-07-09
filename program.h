@@ -8,12 +8,19 @@
 
 typedef enum {
 	_OP_RETURN,
+	_OP_CONSTANT,
+	_OP_NULL,
+	_OP_TRUE,
+	_OP_FALSE,
+	_OP_EQUAL,
+	_OP_GREATER,
+	_OP_LESS,
 	_OP_ADD,
 	_OP_SUBTRACT,
 	_OP_MULTIPLY,
 	_OP_DIVIDE,
+	_OP_NOT,
 	_OP_NEGATE,
-	_OP_CONSTANT,
 } _ZSVMopcode;
 
 void _zsvmWriteProgramByte(ZSVMprogram* program, uint8_t byte);

@@ -35,6 +35,7 @@ typedef enum {
 	_TOKEN_FUN,
 	_TOKEN_IF,
 	_TOKEN_MUL,
+	_TOKEN_NULL,
 	_TOKEN_OR,
 	_TOKEN_RETURN,
 	_TOKEN_SET,

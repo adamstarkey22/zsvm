@@ -112,6 +112,7 @@ static _ZSVMtokentype identifierType(_ZSVMscanner* scanner) {
 	if (matchString(scanner, "fun"))    return _TOKEN_FUN;
 	if (matchString(scanner, "if"))     return _TOKEN_IF;
 	if (matchString(scanner, "mul"))    return _TOKEN_MUL;
+	if (matchString(scanner, "null"))    return _TOKEN_NULL;
 	if (matchString(scanner, "or"))     return _TOKEN_OR;
 	if (matchString(scanner, "return")) return _TOKEN_RETURN;
 	if (matchString(scanner, "set"))    return _TOKEN_SET;

@@ -45,7 +45,14 @@ size_t _zsvmDisassembleInstruction(ZSVMprogram* program, size_t offset) {
 		case _OP_SUBTRACT: return simpleInstruction("SUBTRACT", offset);
 		case _OP_MULTIPLY: return simpleInstruction("MULTIPLY", offset);
 		case _OP_DIVIDE:   return simpleInstruction("DIVIDE", offset);
+		case _OP_NOT:      return simpleInstruction("NOT", offset);
 		case _OP_NEGATE:   return simpleInstruction("NEGATE", offset);
+		case _OP_NULL:     return simpleInstruction("NULL", offset);
+		case _OP_TRUE:     return simpleInstruction("TRUE", offset);
+		case _OP_FALSE:    return simpleInstruction("FALSE", offset);
+		case _OP_EQUAL:    return simpleInstruction("EQUAL", offset);
+		case _OP_GREATER:  return simpleInstruction("GREATER", offset);
+		case _OP_LESS:     return simpleInstruction("LESS", offset);
 
 		case _OP_CONSTANT: return constantInstruction("CONSTANT", program, offset);
 
@@ -86,6 +93,7 @@ const char* const _ZSVMtokenstrings[] = {
 	[_TOKEN_FUN]           = "FUN",
 	[_TOKEN_IF]            = "IF",
 	[_TOKEN_MUL]           = "MUL",
+	[_TOKEN_NULL]          = "NULL",
 	[_TOKEN_OR]            = "OR",
 	[_TOKEN_RETURN]        = "RETURN",
 	[_TOKEN_SET]           = "SET",

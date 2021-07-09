@@ -24,5 +24,25 @@ void _zsvmWriteValueArray(_ZSVMvaluearray* array, _ZSVMvalue value) {
 }
 
 void _zsvmPrintValue(_ZSVMvalue value) {
-	printf("%g", value);
+	switch (value.type) {
+	case _VALUE_BOOL:
+		printf(_ZSVM_AS_BOOL(value) ? "true" : "false");
+		break;
+	case _VALUE_NULL:
+		printf("null");
+		break;
+	case _VALUE_NUMBER:
+		printf("%g", _ZSVM_AS_NUMBER(value));
+		break;
+	}
+}
+
+bool _zsvmValuesEqual(_ZSVMvalue a, _ZSVMvalue b) {
+	if (a.type != b.type) return false;
+	switch (a.type) {
+		case _VALUE_BOOL:   return _ZSVM_AS_BOOL(a) == _ZSVM_AS_BOOL(b);
+		case _VALUE_NULL:   return true;
+		case _VALUE_NUMBER: return _ZSVM_AS_NUMBER(a) == _ZSVM_AS_NUMBER(b);
+		default: return; // Unreachable
+	}
 }

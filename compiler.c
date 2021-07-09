@@ -122,11 +122,26 @@ static void binary(Parser* parser) {
 	parsePrecedence(parser, (Precedence)(rule->precedence + 1));
 
 	switch (operatorType) {
-		case _TOKEN_PLUS:  emitByte(parser, _OP_ADD); break;
-		case _TOKEN_MINUS: emitByte(parser, _OP_SUBTRACT); break;
-		case _TOKEN_STAR:  emitByte(parser, _OP_MULTIPLY); break;
-		case _TOKEN_SLASH: emitByte(parser, _OP_DIVIDE); break;
+		case _TOKEN_EQUAL_EQUAL:   emitByte(parser, _OP_EQUAL); break;
+		case _TOKEN_BANG_EQUAL:    emitBytes(parser, _OP_EQUAL, _OP_NOT); break;
+		case _TOKEN_GREATER_EQUAL: emitBytes(parser, _OP_LESS, _OP_NOT); break;
+		case _TOKEN_GREATER:       emitByte(parser, _OP_GREATER); break;
+		case _TOKEN_LESS_EQUAL:    emitBytes(parser, _OP_GREATER, _OP_NOT); break;
+		case _TOKEN_LESS:          emitByte(parser, _OP_LESS); break;
+		case _TOKEN_PLUS:          emitByte(parser, _OP_ADD); break;
+		case _TOKEN_MINUS:         emitByte(parser, _OP_SUBTRACT); break;
+		case _TOKEN_STAR:          emitByte(parser, _OP_MULTIPLY); break;
+		case _TOKEN_SLASH:         emitByte(parser, _OP_DIVIDE); break;
 		default: return; // Unreachable
+	}
+}
+
+static void literal(Parser* parser) {
+	switch (parser->previous.type) {
+		case _TOKEN_FALSE: emitByte(parser, _OP_FALSE); break;
+		case _TOKEN_NULL:  emitByte(parser, _OP_NULL); break;
+		case _TOKEN_TRUE:  emitByte(parser, _OP_TRUE); break;
+		default: return; //Unreachable
 	}
 }
 
@@ -137,7 +152,7 @@ static void grouping(Parser* parser) {
 
 static void number(Parser* parser) {
 	double value = strtod(parser->previous.start, NULL);
-	emitConstant(parser, value);
+	emitConstant(parser, _ZSVM_NUMBER_VAL(value));
 }
 
 static void unary(Parser* parser) {
@@ -146,6 +161,7 @@ static void unary(Parser* parser) {
 	parsePrecedence(parser, PREC_UNARY);
 
 	switch (operatorType) {
+		case _TOKEN_BANG: emitByte(parser, _OP_NOT); break;
 		case _TOKEN_MINUS: emitByte(parser, _OP_NEGATE); break;
 		default: return; // Unreachable
 	}
@@ -163,13 +179,13 @@ ParseRule rules[] = {
 	[_TOKEN_STAR]          = {NULL,        binary,      PREC_FACTOR},
 	[_TOKEN_SLASH]         = {NULL,        binary,      PREC_FACTOR},
 	[_TOKEN_LINE_END]      = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_EQUAL_EQUAL]   = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_BANG]          = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_BANG_EQUAL]    = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_GREATER]       = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_GREATER_EQUAL] = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_LESS]          = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_LESS_EQUAL]    = {NULL,        NULL,        PREC_NONE},
+	[_TOKEN_EQUAL_EQUAL]   = {NULL,        binary,      PREC_EQUALITY},
+	[_TOKEN_BANG]          = {unary,       NULL,        PREC_NONE},
+	[_TOKEN_BANG_EQUAL]    = {NULL,        binary,      PREC_EQUALITY},
+	[_TOKEN_GREATER]       = {NULL,        binary,      PREC_EQUALITY},
+	[_TOKEN_GREATER_EQUAL] = {NULL,        binary,      PREC_EQUALITY},
+	[_TOKEN_LESS]          = {NULL,        binary,      PREC_EQUALITY},
+	[_TOKEN_LESS_EQUAL]    = {NULL,        binary,      PREC_EQUALITY},
 	[_TOKEN_STRING]        = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_NUMBER]        = {number,      NULL,        PREC_NONE},
 	[_TOKEN_IDENTIFIER]    = {NULL,        NULL,        PREC_NONE},
@@ -179,15 +195,16 @@ ParseRule rules[] = {
 	[_TOKEN_DEF]           = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_DIV]           = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_ELSE]          = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_FALSE]         = {NULL,        NULL,        PREC_NONE},
+	[_TOKEN_FALSE]         = {literal,     NULL,        PREC_NONE},
 	[_TOKEN_FUN]           = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_IF]            = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_MUL]           = {NULL,        NULL,        PREC_NONE},
+	[_TOKEN_NULL]          = {literal,     NULL,        PREC_NONE},
 	[_TOKEN_OR]            = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_RETURN]        = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_SET]           = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_SUB]           = {NULL,        NULL,        PREC_NONE},
-	[_TOKEN_TRUE]          = {NULL,        NULL,        PREC_NONE},
+	[_TOKEN_TRUE]          = {literal,     NULL,        PREC_NONE},
 	[_TOKEN_WHILE]         = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_ERROR]         = {NULL,        NULL,        PREC_NONE},
 	[_TOKEN_EOF]           = {NULL,        NULL,        PREC_NONE},
@@ -237,7 +254,7 @@ ZSVMresult zsvmCompileProgram(ZSVMprogram* program, const char* source) {
 
 	advance(&parser);
 	expression(&parser);
-	consume(&parser, _TOKEN_EOF, "Expect end of expression.");
+	consume(&parser, _TOKEN_LINE_END, "Expect end of expression.");
 	endCompiler(&parser);
 
 	if (parser.hadError) return ZSVM_COMPILE_ERROR;
